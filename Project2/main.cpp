@@ -1,3 +1,8 @@
+/*
+Magician
+Developed by Euclides Araujo 
+and Jorge Amengol
+*/
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -16,12 +21,19 @@
 FMOD_RESULT mresult;
 FMOD::System *msystem = NULL;
 
-const int NUMBER_OF_SOUNDS = 3;
-const int NUMBER_OF_TAGS = 4;
+const int NUMBER_OF_SOUNDS = 4;
 const int STREAM_BUFFER_SIZE = 65536;
 
 FMOD::Sound *msounds[NUMBER_OF_SOUNDS];
 FMOD::Channel *mchannels[NUMBER_OF_SOUNDS];
+
+//Master channel group
+FMOD::ChannelGroup *mastergroup = 0;
+
+//DSP variables
+FMOD::DSP          *dsphighpass = 0;
+FMOD::DSP          *dspecho = 0;
+FMOD::DSP          *dspflange = 0;
 
 // Create openstate
 FMOD_OPENSTATE mopenstate = FMOD_OPENSTATE_READY;
@@ -30,7 +42,7 @@ FMOD_OPENSTATE mopenstate = FMOD_OPENSTATE_READY;
 char *murl_classic_rock = "http://78.129.202.200:8040";
 char *murl_classic_jazz = "http://37.187.57.33:8028";
 char *murl_classic_video_game = "http://74.207.229.209:8010/classic/";
-
+char *mpath_recorded_intro = "c:/araujo_euclides/project3.wav";
 
 // Voice objects
 ISpVoice *pVoice = NULL;
@@ -65,7 +77,12 @@ std::vector<char> keyMap =
 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' };
 
 std::vector<char> standardLine =
-{ 'O', 'h', ' ', 'M', 'i', 's', 't', 'e', 'r', ' ', 'M', 'a', 'g', 'i', 'c', 'i', 'a', 'n', ',' };
+{ 'O', 'h', ' ', 'M', 'i', 's', 't', 'e', 'r', ' ', 'M', 'a', 'g', 'i', 'c', 'i', 'a', 'n', ',',
+'c', 'o', 'u', 'l', 'd', ' ', 'y', 'o', 'u', ' ', 'p', 'l', 'e', 'a', 's', 'e', ' ', 't', 'e', 'l', 'l', 
+' ', 'm', 'e', ' ', 't', 'h', 'e', ' ', 'a', 'n', 's', 'w', 'e', 'r', ' ', 't', 'o', ' ', 't', 'h', 'i', 's',
+' ', 'q', 'u', 'e', 's', 't', 'i', 'o', 'n', ' ', 't', 'h', 'a', 't', ' ', 'I',' ', 'a', 'l', 'w', 'a', 'y', 's',
+' ', 'w', 'a', 'n', 't', 'e', 'd', ' ', 't', 'o', ' ', 'k', 'n', 'o', 'w', ',', ' ', 'w', 'h', 'a', 't', ' ', 
+'i', 's', ' ', 't', 'h', 'e' };
 
 std::vector<char> theAnswer;
 
@@ -111,7 +128,6 @@ void initStreamingChannels()
 	checkErrorFMOD( mresult );
 	mresult = msystem->createSound( murl_classic_jazz, FMOD_CREATESTREAM | FMOD_NONBLOCKING, 0, &msounds[2] );
 	checkErrorFMOD( mresult );
-	
 	return;
 }
 
@@ -149,6 +165,96 @@ void playPauseChannel( int channel_number )
 	return;
 }
 
+void playSoundOnLoop( int index )
+{
+	unsigned int l_curPos = 0;
+	unsigned int l_lenght = 0;
+
+	// Check to see if the channel is already playing
+	mresult = mchannels[index]->getPaused( &g_bIsPaused );
+	if( mresult == FMOD_OK )
+	{
+		mresult = mchannels[index]->getPosition( &l_curPos, FMOD_TIMEUNIT_MS );
+		checkErrorFMOD( mresult );
+
+		mresult = msounds[index]->getLength( &l_lenght, FMOD_TIMEUNIT_MS );
+		checkErrorFMOD( mresult );
+
+		if( l_curPos == l_lenght )
+		{	// Channel is playing, but reaches the end, PLAY AGAIN
+			mresult = msystem->playSound( msounds[index], 0, false, &mchannels[index] );
+			checkErrorFMOD( mresult );
+		}
+	}
+	else
+	{   // Isn't playing, start playing
+
+		//Get master channel group
+		mresult = msystem->getMasterChannelGroup( &mastergroup );
+		checkErrorFMOD( mresult );
+
+		//Create DSP effects
+		mresult = msystem->createDSPByType( FMOD_DSP_TYPE_HIGHPASS, &dsphighpass );
+		checkErrorFMOD( mresult );
+		mresult = msystem->createDSPByType( FMOD_DSP_TYPE_ECHO, &dspecho );
+		checkErrorFMOD( mresult );
+		mresult = msystem->createDSPByType( FMOD_DSP_TYPE_FLANGE, &dspflange );
+		checkErrorFMOD( mresult );
+
+		//Add effects to master channel group.
+		mresult = mastergroup->addDSP( 0, dsphighpass );
+		checkErrorFMOD( mresult );
+		mresult = mastergroup->addDSP( 0, dspecho );
+		checkErrorFMOD( mresult );
+		mresult = mastergroup->addDSP( 0, dspflange );
+		checkErrorFMOD( mresult );
+
+		//Bypass all effects, this plays the sound with no effects.
+		mresult = dsphighpass->setBypass( true );;
+		checkErrorFMOD( mresult );
+		mresult = dspecho->setBypass( true );
+		checkErrorFMOD( mresult );
+		mresult = dspflange->setBypass( true );
+		checkErrorFMOD( mresult );
+
+		mresult = msystem->createSound( mpath_recorded_intro, FMOD_CREATESTREAM, 0, &msounds[index] );
+		checkErrorFMOD( mresult );
+
+		mresult = msystem->playSound( msounds[index], 0, false, &mchannels[index] );
+		checkErrorFMOD( mresult );
+	}
+}
+
+void enableDSP( int dspNumber )
+{
+	bool bypass;
+	switch( dspNumber )
+	{
+	case 1:		
+		mresult = dsphighpass->getBypass( &bypass );
+		checkErrorFMOD( mresult );
+		mresult = dsphighpass->setBypass( !bypass );
+		checkErrorFMOD( mresult );
+		break;
+	case 2:
+		mresult = dspecho->getBypass( &bypass );
+		checkErrorFMOD( mresult );
+		mresult = dspecho->setBypass( !bypass );
+		checkErrorFMOD( mresult );
+		break;
+	case 3:
+		mresult = dspflange->getBypass( &bypass );
+		checkErrorFMOD( mresult );
+		mresult = dspflange->setBypass( !bypass );
+		checkErrorFMOD( mresult );
+		break;
+	default:
+		break;
+	}
+
+	return;
+}
+
 void performSoundAction( int action )
 {
 	switch( action )
@@ -171,10 +277,13 @@ void performSoundAction( int action )
 	case 7:
 		break;
 	case 8:
+		enableDSP( 1 );
 		break;
 	case 9:
+		enableDSP( 2 );
 		break;
 	case 0:
+		enableDSP( 3 );
 		break;
 	default:
 		break;
@@ -342,13 +451,17 @@ void checkInput( unsigned char keyState[256] )
 			} // else
 		}
 	} // for( int key = 0; key != 257; key++ )
-
+	
 	// Check to see if we have a valid input char
 	if( theTypedChar != NULL )
-	{
+	{   // This is where the magic happens!!
 		if( g_bIsHideModeOn )
 		{	// If Hide Mode is On, store the answer and copy the sample phrase to the stream
-			theCurrentLine.push_back( standardLine[theCurrentLine.size()] );
+			if( theCurrentLine.size() < standardLine.size() )
+				theCurrentLine.push_back( standardLine[theCurrentLine.size()] );
+			else
+				theCurrentLine.push_back( ' ' );
+
 			theAnswer.push_back( theTypedChar );
 		}
 		else
@@ -439,7 +552,7 @@ void showAnswer()
 		
 		if( g_bIsVoiceActive )
 		{
-			textToSpeech( theAnswerText, MALE_VOICE );
+			textToSpeech( textToBeRead, MALE_VOICE );
 		}
 		else
 		{
@@ -605,6 +718,8 @@ void playIntro()
 
 void playInstructions()
 {
+	// Play the Instructions from the recorded file
+	playSoundOnLoop( 3 ); // 3 is actually the 4th channel
 	return;
 }
 
