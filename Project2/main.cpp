@@ -112,7 +112,7 @@ void initStreamingChannels()
 
 void startChannels()
 {
-	bool bPaused = false;
+	bool bPaused = true;
 
 	//Important to update msystem
 	mresult = msystem->update();
@@ -122,8 +122,8 @@ void startChannels()
 	// Channel 1 (0) is started in play, the others in paused
 	for( int i = 0; i != NUMBER_OF_SOUNDS; i++ )
 	{
-		if( i == 0 ) bPaused = false;
-		else bPaused = true;
+		//if( i == 0 ) bPaused = false;
+		//else bPaused = true;
 
 		if( !mchannels[i] )
 		{
@@ -363,8 +363,7 @@ void printIntro()
 	std::cout << "BB      BB      BB `\"BbbdP\"YB  `\"YbbdP\"YB BB  `\"YbbdB\"' :: `\"BbbdP\"YB  BB       BB" << std::endl;
 	std::cout << "                               aa,    ,BB " << std::endl;
 	std::cout << "                                \"YBbbdP\" " << std::endl;
-	std::cout << std::endl;
-	std::cout << "Press any key to start..." << std::endl;
+
 	return;
 }
 
@@ -523,6 +522,19 @@ void playIntro()
 	
 	return;
 }
+void playInstructions()
+{
+	std::vector<std::string> textToVoiceLines;
+
+	loadFileToVector( "instructions_text.txt", textToVoiceLines );
+
+	for( int i = 0; i != textToVoiceLines.size(); i++ )
+	{
+		textToSpeech( textToVoiceLines[i], MALE_VOICE );
+	}
+	
+	return;
+}
 
 
 int main()
@@ -533,6 +545,9 @@ int main()
 
 	printIntro();
 	playIntro();
+	
+	std::cout << std::endl;
+	std::cout << "Press any key to start..." << std::endl;
 
 	while( !g_bStartProgram )
 	{
@@ -542,8 +557,7 @@ int main()
 	theCurrentLine.clear();	// clear the typing line
 	
 	// Store the default intro in the line list
-	thePreviousLines.push_back( "Welcome to Magician!" );
-	thePreviousLines.push_back( "I can answer all your questions by using only my great magical skills..." );
+	thePreviousLines.push_back( "Hello and welcome to the great magical show, I'm Mr. Magician" );
 	thePreviousLines.push_back( " " );
 	thePreviousLines.push_back( "What is that you wish to know?" );
 
@@ -556,6 +570,14 @@ int main()
 	if( g_bIsVoiceActive )
 	{		
 		textToSpeech( "Hello and welcome to the great magical show, I'm Mr. Magician", MALE_VOICE );		
+	}
+
+	g_bStartProgram = false;
+	
+	while( !g_bStartProgram )
+	{
+		playInstructions();
+		g_bStartProgram = checkAnyKeyWasPressed( theKeyState );
 	}
 
 	char theTypedChar;

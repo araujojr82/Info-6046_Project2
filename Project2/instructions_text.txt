@@ -1,0 +1,3 @@
+I can answer all your questions by using only my great magical skills...;
+Just type in, 'Oh Mister Magician', and your question and I shall give you the answer.;
+I'm going to repeat these instructions, if you don't want me to repeat it, press any key and I will stop.<silence msec = "800" />;
