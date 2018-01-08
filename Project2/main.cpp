@@ -2,7 +2,9 @@
 #include <string>
 #include <vector>
 #include <windows.h>
-#include <sapi.h>
+#include <sapi.h>	//Text to Speech Library
+#include <fmod.hpp>
+#include <fmod_errors.h>
 
 //TODO: Create voice object.
 ISpVoice *pVoice = NULL;
@@ -350,8 +352,8 @@ int main()
 	if( g_bIsVoiceActive )
 	{
 		textToSpeech( "Welcome to Magician!" );
-		textToSpeech( "I can answer all your questions by using only my great magical skills..." );
-		textToSpeech( "What is that you wish to know?" );
+		//textToSpeech( "I can answer all your questions by using only my great magical skills..." );
+		//textToSpeech( "What is that you wish to know?" );
 	}
 
 	char theTypedChar;
