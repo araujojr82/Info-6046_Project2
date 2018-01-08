@@ -16,6 +16,9 @@ bool g_bIsShiftPressed = false;
 bool g_bIsCapsPressed = false;
 bool g_bIsVoiceActive = false;
 
+const std::string g_voiceGender = "Male";
+//const std::string g_voiceGender = "Female";
+
 unsigned char theKeyState[256];
 
 std::vector<char> numberMap =
@@ -36,10 +39,6 @@ std::vector<char> theCurrentLine;
 
 bool checkAnyKeyWasPressed( unsigned char keyState[256] )
 {
-	//Sleep( 100 );
-
-	//unsigned char keyState[256];
-
 	// get the state of everykey
 	for( int i = 0; i < 256; i++ )
 	{
@@ -57,7 +56,6 @@ bool checkAnyKeyWasPressed( unsigned char keyState[256] )
 
 	// else, return false
 	return false;
-
 }
 
 void checkInput( unsigned char keyState[256] )
@@ -84,7 +82,8 @@ void checkInput( unsigned char keyState[256] )
 			// return the cursor to the beggining of the line
 			std::cout << "\r";
 
-			// print the a blank line until the last po
+			// print a blank line until the last position, 
+			// this will clear the last typed char of the screen
 			for( int pos = 0; pos != howManyChars; pos++ )
 			{
 				std::cout << " ";
@@ -148,7 +147,8 @@ void checkInput( unsigned char keyState[256] )
 
 			else if( key == VK_SPACE )
 			{   // Space Key
-				theCurrentLine.push_back( ' ' );
+				//theCurrentLine.push_back( ' ' );
+				theTypedChar = ' ';
 			}
 
 			else if( key == VK_CAPITAL )
@@ -160,7 +160,6 @@ void checkInput( unsigned char keyState[256] )
 			else if( key >= 48 && key <= 57 )
 			{
 				theTypedChar = numberMap[key - 48];
-				//theCurrentLine.push_back( numberMap[key - 48] );
 			}
 
 			// Check for letter input
@@ -168,13 +167,12 @@ void checkInput( unsigned char keyState[256] )
 			{
 
 				theTypedChar = keyMap[key - 65];
+				//If Caps is ON or Shift is pressed, convert to Uppercase
 				if( g_bIsCapsPressed || g_bIsShiftPressed )
 					theTypedChar = toupper( theTypedChar );
-
-				//theCurrentLine.push_back( theTypedChar );
 			}
 
-			// Check for all others 
+			// Check for all others keys
 			else
 			{		
 				theTypedChar = MapVirtualKey( key, 2 );
@@ -183,21 +181,22 @@ void checkInput( unsigned char keyState[256] )
 					if( g_bIsShiftPressed ){
 						if( theTypedChar == '/' ) theTypedChar = '?';
 					}
-					//theCurrentLine.push_back( theTypedChar );
 				}
 			} // else
 		}
 	} // for( int key = 0; key != 257; key++ )
 
+	// Check to see if we have a valid input char
 	if( theTypedChar != NULL )
 	{
 		if( g_bIsHideModeOn )
-		{
+		{	// If Hide Mode is On, store the answer and copy the sample phrase to the stream
 			theCurrentLine.push_back( standardLine[theCurrentLine.size()] );
 			theAnswer.push_back( theTypedChar );
 		}
 		else
 		{
+			// If Hide Mode is Off, copy the input to the stream
 			theCurrentLine.push_back( theTypedChar );
 		}
 	}
@@ -206,7 +205,6 @@ void checkInput( unsigned char keyState[256] )
 
 void printIntro()
 {
-	//std::cout << "Starting" << std::endl;
 	std::cout << std::endl;
 	std::cout << "                                                               + *      + * _" << std::endl;
 	std::cout << "                                                        /\\ * * + * + * +" << std::endl;
@@ -237,70 +235,91 @@ void checkShiftState()
 	return;
 }
 
+void textToSpeech( std::string textToBeRead )
+{
+	std::string textWithParameters;
+
+	// Assemble the Text to be read with the function parameters
+	// such as voice gender
+	textWithParameters = "<voice required='Gender = ";
+	textWithParameters += g_voiceGender;
+	textWithParameters += "'>";
+	textWithParameters += textToBeRead;
+	textWithParameters += "</voice>";
+
+	// Convert the Strint to WString so we can use the c_str() function
+	std::wstring textToWString( textWithParameters.begin(), textWithParameters.end() );
+
+	// Convert the WString to LPCWSTR
+	LPCWSTR theText = textToWString.c_str();
+
+	// Call the voice module with the text to be read
+	hr = pVoice->Speak( theText, 0, NULL );
+
+	return;
+}
+
 void showAnswer()
 {
 	std::string theAnswerText;
-	for( int pos = 0; pos != theAnswer.size(); pos++ )
-	{
-		theAnswerText += theAnswer[pos];
-		//std::cout << theAnswer[pos];
-	}
-	theAnswer.clear();
 	g_bIsTimeToAnser = false;
 
-	std::string textToSpeech;
-	textToSpeech = "<voice required='Gender = Male'>The answer to your question is, ";
-	textToSpeech += theAnswerText;
-	textToSpeech += "</voice>";
+	// Check to see if the user gave an answer
+	if( theAnswer.size() > 0 )
+	{	// There's an answer, go on...
+		for( int pos = 0; pos != theAnswer.size(); pos++ )
+		{
+			theAnswerText += theAnswer[pos];
+		}
+		theAnswer.clear();
 
-	std::wstring textToWString ( textToSpeech.begin(), textToSpeech.end() );
-
-	LPCWSTR theText = textToWString.c_str();
-
-	if( g_bIsVoiceActive )
-	{
-		//hr = pVoice->Speak( L"<voice required='Gender = Male'>Hello media fundamentals</voice>", 0, NULL );
-		hr = pVoice->Speak( theText, 0, NULL );
+		std::string textToBeRead;
+		textToBeRead = "The answer to your question is, ";
+		textToBeRead += theAnswerText;
+		
+		if( g_bIsVoiceActive )
+		{
+			textToSpeech( theAnswerText );
+		}
+		else
+		{
+			std::cout << "The answer to your question is: " << theAnswerText;
+		}
 	}
 	else
-	{
-		std::cout << "The answer to your question is: " << theAnswerText;
-	}
-	
+	{ // There's no answer, give some feedback to the user
+
+		theAnswerText = "I didn't understand, could you rephrase the question, please?";
+
+		if( g_bIsVoiceActive )
+		{
+			textToSpeech( theAnswerText );
+		}
+		else
+		{
+			std::cout << theAnswerText;
+		}
+	}	
 }
 
-
-bool initVoiceModule()
+void initVoiceModule()
 {
-	////TODO: Create voice object.
-	//ISpVoice *pVoice = NULL;
-
-
-	//TODO: Initialize the COM library on the current thread
+	
+	//Initialize the COM library on the current thread
 	if( FAILED( ::CoInitialize( NULL ) ) ) {
-		return false;
+		g_bIsVoiceActive = false;
+		return;
 	}
 
-	//TODO: Initialize voice.
+	//Initialize voice.
 	hr = CoCreateInstance( CLSID_SpVoice, NULL, CLSCTX_ALL, IID_ISpVoice, ( void ** )&pVoice );
 
-	//TODO: Speak
-	if( SUCCEEDED( hr ) ) {
-		g_bIsVoiceActive = true;
-		//hr = pVoice->Speak( L"<voice required='Gender = Female'>Hello media fundamentals</voice>", 0, NULL );
-		//hr = pVoice->Speak( L"<voice required='Gender = Male'>Hello media fundamentals</voice>", 0, NULL );
-		//hr = pVoice->Speak( L"<rate speed='-5'>Fanshawe College</rate>", 0, NULL );
-		//hr = pVoice->Speak( L"<lang langid = '409'>This should be spoken in english< / lang>", 0, NULL );
-	}
-	else
-	{
-		g_bIsVoiceActive = false;
-	}
-	
+	// If successfully initialized, return true, otherwise return false;
+	if( SUCCEEDED( hr ) ) g_bIsVoiceActive = true;
+	else g_bIsVoiceActive = false;
 
-	return true;
+	return;
 }
-
 
 
 int main()
@@ -313,8 +332,10 @@ int main()
 	{
 		g_bStartProgram = checkAnyKeyWasPressed( theKeyState );
 	}
-	theCurrentLine.clear();
-	//system( "cls" );	
+
+	theCurrentLine.clear();	// clear the typing line
+	
+	// Store the default intro in the line list
 	thePreviousLines.push_back( "Welcome to Magician!" );
 	thePreviousLines.push_back( "I can answer all your questions by using only my great magical skills..." );
 	thePreviousLines.push_back( " " );
@@ -324,6 +345,13 @@ int main()
 	for( int line = 0; line != thePreviousLines.size(); line++ )
 	{
 		std::cout << thePreviousLines[line] << std::endl;
+	}
+
+	if( g_bIsVoiceActive )
+	{
+		textToSpeech( "Welcome to Magician!" );
+		textToSpeech( "I can answer all your questions by using only my great magical skills..." );
+		textToSpeech( "What is that you wish to know?" );
 	}
 
 	char theTypedChar;
@@ -348,23 +376,20 @@ int main()
 			// return the cursor to the beggining of the line
 			std::cout << "\r";
 
+			// check to see if the user pressed Enter, and display the answer
 			if( g_bIsTimeToAnser ) showAnswer();
 
-			// print the current line over again
+			// in every loop step we print the current line over again
 			for( int pos = 0; pos != theCurrentLine.size(); pos++ )
 			{
 				std::cout << theCurrentLine[pos];
 			}
-
 		}
-
 	}
-
-
-	//TODO: Release objects
+	
+	// Release the voice objects
 	pVoice->Release();
 	pVoice = NULL;
-
 	::CoUninitialize();
 
 	return 0;
