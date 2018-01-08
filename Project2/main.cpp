@@ -15,9 +15,9 @@ unsigned char theKeyState[256];
 std::vector<char> numberMap =
 { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
 
-std::vector<char> keyMap = 
+std::vector<char> keyMap =
 { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-  'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' };
+'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' };
 
 std::vector<char> standardLine =
 { 'O', 'h', ' ', 'M', 'i', 's', 't', 'e', 'r', ' ', 'M', 'a', 'g', 'i', 'c', 'i', 'a', 'n', ',' };
@@ -31,7 +31,7 @@ bool checkAnyKeyWasPressed( unsigned char keyState[256] )
 	//Sleep( 100 );
 
 	//unsigned char keyState[256];
-	
+
 	// get the state of everykey
 	for( int i = 0; i < 256; i++ )
 	{
@@ -56,7 +56,7 @@ void checkInput( unsigned char keyState[256] )
 {   //Check for Key Inputs
 
 	if( keyState[VK_ESCAPE] )
-	//if( GetAsyncKeyState( VK_ESCAPE ) )
+		//if( GetAsyncKeyState( VK_ESCAPE ) )
 	{   // Escape Key
 		g_exit_game = true;
 		g_bNewInput = true;
@@ -71,27 +71,45 @@ void checkInput( unsigned char keyState[256] )
 	//if( keyState[VK_LSHIFT] || keyState[VK_RSHIFT] )
 	if( keyState[VK_SHIFT] )
 	{   // Left Lock
-		
+
 		//if( keyLS < 0 )
 		//	std::cout << "Shift Key is Down" << std::endl;
 		//	//g_bIsShiftPressed = true;
 		//else
 		//	std::cout << "Shift Key is Up" << std::endl;
 		//	//g_bIsShiftPressed = false;
-	}	
-	
+	}
+
 	if( keyState[VK_LCONTROL] )
 	{   // Left Control (Activate or Deactivate the hiden Mode)
 		g_bIsHideModeOn = !g_bIsHideModeOn;
 		if( g_bIsHideModeOn )
-			std::cout << "Hidden Mode is ON" << std::endl;			
+			std::cout << "Hidden Mode is ON" << std::endl;
 		else
 			std::cout << "Hidden Mode is OFF" << std::endl;
 	}
 
 	if( keyState[VK_RETURN] )
 	{   // Enter Key
+		//system( "cls" );
+		std::string theLine;
+
+		for( int pos = 0; pos != theCurrentLine.size(); pos++ )
+		{
+			theLine += theCurrentLine[pos];
+		}		
+
+		thePreviousLines.push_back( theLine );
+		theCurrentLine.clear();
+
+		//thePreviousLines.push_back( " " );
+
 		system( "cls" );
+		for( int line = 0; line != thePreviousLines.size(); line++ )
+		{
+			std::cout << thePreviousLines[line] << std::endl;
+		}
+
 	}
 
 	if( keyState[VK_SPACE] )
@@ -119,7 +137,7 @@ void checkInput( unsigned char keyState[256] )
 			}
 		}
 	}
-	
+
 	for( int key = 0; key != 257; key++ )
 	{
 		if( keyState[key] )
@@ -143,7 +161,7 @@ void checkInput( unsigned char keyState[256] )
 			}
 		}
 	}
-	
+
 }
 
 void printIntro()
@@ -175,13 +193,13 @@ int main()
 	{
 		g_bStartProgram = checkAnyKeyWasPressed( theKeyState );
 	}
-	
+
 	//system( "cls" );	
 	thePreviousLines.push_back( "Welcome to Magician!" );
 	thePreviousLines.push_back( "I can answer all your questions by using only my great magical skills..." );
 	thePreviousLines.push_back( " " );
 	thePreviousLines.push_back( "What is that you wish to know?" );
-	
+
 	system( "cls" );
 	for( int line = 0; line != thePreviousLines.size(); line++ )
 	{
@@ -196,7 +214,7 @@ int main()
 			checkInput( theKeyState );
 
 			// return the cursor to the beggining of the line
-			std::cout << "\r"; 
+			std::cout << "\r";
 
 			// print the current line over again
 			for( int pos = 0; pos != theCurrentLine.size(); pos++ )
