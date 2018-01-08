@@ -22,6 +22,8 @@ std::vector<char> keyMap =
 std::vector<char> standardLine =
 { 'O', 'h', ' ', 'M', 'i', 's', 't', 'e', 'r', ' ', 'M', 'a', 'g', 'i', 'c', 'i', 'a', 'n', ',' };
 
+std::vector<char> theAnswer;
+
 std::vector<std::string> thePreviousLines;
 
 std::vector<char> theCurrentLine;
@@ -35,7 +37,7 @@ bool checkAnyKeyWasPressed( unsigned char keyState[256] )
 	// get the state of everykey
 	for( int i = 0; i < 256; i++ )
 	{
-		keyState[i] = GetAsyncKeyState( i );
+		keyState[i] = GetAsyncKeyState( i );		
 	}
 
 	// if any key is pressed, return true
@@ -55,66 +57,12 @@ bool checkAnyKeyWasPressed( unsigned char keyState[256] )
 void checkInput( unsigned char keyState[256] )
 {   //Check for Key Inputs
 
+	char newChar;
+
 	if( keyState[VK_ESCAPE] )
-		//if( GetAsyncKeyState( VK_ESCAPE ) )
 	{   // Escape Key
 		g_exit_game = true;
-		g_bNewInput = true;
 		return;
-	}
-
-	if( keyState[VK_CAPITAL] )
-	{   // Caps Lock
-		g_bIsCapsPressed = !g_bIsCapsPressed;
-	}
-
-	//if( keyState[VK_LSHIFT] || keyState[VK_RSHIFT] )
-	if( keyState[VK_SHIFT] )
-	{   // Left Lock
-
-		//if( keyLS < 0 )
-		//	std::cout << "Shift Key is Down" << std::endl;
-		//	//g_bIsShiftPressed = true;
-		//else
-		//	std::cout << "Shift Key is Up" << std::endl;
-		//	//g_bIsShiftPressed = false;
-	}
-
-	if( keyState[VK_LCONTROL] )
-	{   // Left Control (Activate or Deactivate the hiden Mode)
-		g_bIsHideModeOn = !g_bIsHideModeOn;
-		if( g_bIsHideModeOn )
-			std::cout << "Hidden Mode is ON" << std::endl;
-		else
-			std::cout << "Hidden Mode is OFF" << std::endl;
-	}
-
-	if( keyState[VK_RETURN] )
-	{   // Enter Key
-		//system( "cls" );
-		std::string theLine;
-
-		for( int pos = 0; pos != theCurrentLine.size(); pos++ )
-		{
-			theLine += theCurrentLine[pos];
-		}		
-
-		thePreviousLines.push_back( theLine );
-		theCurrentLine.clear();
-
-		//thePreviousLines.push_back( " " );
-
-		system( "cls" );
-		for( int line = 0; line != thePreviousLines.size(); line++ )
-		{
-			std::cout << thePreviousLines[line] << std::endl;
-		}
-
-	}
-
-	if( keyState[VK_SPACE] )
-	{   // Space Key
-		theCurrentLine.push_back( ' ' );
 	}
 
 	if( keyState[VK_BACK] )
@@ -136,33 +84,124 @@ void checkInput( unsigned char keyState[256] )
 				std::cout << " ";
 			}
 		}
+		return;
 	}
 
-	for( int key = 0; key != 257; key++ )
+	if( keyState[VK_RETURN] )
+	{   // Enter Key
+		std::string theLine;
+
+		for( int pos = 0; pos != theCurrentLine.size(); pos++ )
+		{
+			theLine += theCurrentLine[pos];
+		}
+
+		thePreviousLines.push_back( theLine );
+		theCurrentLine.clear();
+
+		system( "cls" );
+		for( int line = 0; line != thePreviousLines.size(); line++ )
+		{
+			std::cout << thePreviousLines[line] << std::endl;
+		}
+
+		// print the current line over again
+		for( int pos = 0; pos != theAnswer.size(); pos++ )
+		{
+			//theLine += theAnswer[pos];
+			std::cout << theAnswer[pos];
+		}
+		//thePreviousLines.push_back( theLine );
+		return;
+	}
+
+	if( keyState[VK_SHIFT] ||
+		keyState[VK_LSHIFT] ||
+		keyState[VK_RSHIFT] )
+	{
+		return;
+	}
+
+	if( keyState[VK_LCONTROL] )
+	{   // Left Control (Activate or Deactivate the hiden Mode)
+		g_bIsHideModeOn = !g_bIsHideModeOn;
+		if( g_bIsHideModeOn )
+			std::cout << "Hidden Mode is ON" << std::endl;
+		else
+			std::cout << "Hidden Mode is OFF" << std::endl;
+		return;
+	}
+
+	char theTypedChar = NULL;
+
+	for( int key = 0; key != 256; key++ )
 	{
 		if( keyState[key] )
 		{
-			// Check for number input
-			if( key >= 48 && key <= 57 )
+			if( key == VK_SHIFT ||
+				key == VK_LSHIFT ||
+				key == VK_RSHIFT )
 			{
-				theCurrentLine.push_back( numberMap[key - 48] );
+				continue;
+			}
+
+			else if( key == VK_SPACE )
+			{   // Space Key
+				theCurrentLine.push_back( ' ' );
+			}
+
+			else if( key == VK_CAPITAL )
+			{   // Caps Lock
+				g_bIsCapsPressed = !g_bIsCapsPressed;
+			}
+
+			// Check for number input
+			else if( key >= 48 && key <= 57 )
+			{
+				theTypedChar = numberMap[key - 48];
+				//theCurrentLine.push_back( numberMap[key - 48] );
 			}
 
 			// Check for letter input
 			else if( key >= 65 && key <= 90 )
 			{
-				char toBePrinted;
 
-				toBePrinted = keyMap[key - 65];
+				theTypedChar = keyMap[key - 65];
 				if( g_bIsCapsPressed || g_bIsShiftPressed )
-					toBePrinted = toupper( toBePrinted );
+					theTypedChar = toupper( theTypedChar );
 
-				theCurrentLine.push_back( toBePrinted );
+				//theCurrentLine.push_back( theTypedChar );
 			}
+
+			// Check for all others 
+			else
+			{		
+				theTypedChar = MapVirtualKey( key, 2 );
+				if( theTypedChar != 0 )
+				{
+					if( g_bIsShiftPressed ){
+						if( theTypedChar == '/' ) theTypedChar = '?';
+					}
+					//theCurrentLine.push_back( theTypedChar );
+				}
+			} // else
+		}
+	} // for( int key = 0; key != 257; key++ )
+
+	if( theTypedChar != NULL )
+	{
+		if( g_bIsHideModeOn )
+		{
+			theCurrentLine.push_back( standardLine[theCurrentLine.size()] );
+			theAnswer.push_back( theTypedChar );
+		}
+		else
+		{
+			theCurrentLine.push_back( theTypedChar );
 		}
 	}
 
-}
+} // void checkInput...
 
 void printIntro()
 {
@@ -185,6 +224,18 @@ void printIntro()
 	return;
 }
 
+void checkShiftState()
+{
+	short sState2 = GetKeyState( VK_SHIFT );
+
+	g_bIsShiftPressed = false;	
+
+	if( sState2 < 0 )
+		g_bIsShiftPressed = true;
+
+	return;
+}
+
 int main()
 {
 	printIntro();
@@ -193,7 +244,7 @@ int main()
 	{
 		g_bStartProgram = checkAnyKeyWasPressed( theKeyState );
 	}
-
+	theCurrentLine.clear();
 	//system( "cls" );	
 	thePreviousLines.push_back( "Welcome to Magician!" );
 	thePreviousLines.push_back( "I can answer all your questions by using only my great magical skills..." );
@@ -206,10 +257,22 @@ int main()
 		std::cout << thePreviousLines[line] << std::endl;
 	}
 
+	char theTypedChar;
+
 	while( !g_exit_game )
 	{
+		checkShiftState();
+
+		//std::string status;
+		//if( g_bIsShiftPressed ) status = "ON";
+		//else status = "OFF";
+
+		//std::cout << status << std::endl;
+
+		//Sleep( 100 );
+
 		if( checkAnyKeyWasPressed( theKeyState ) )
-		{
+		{					
 			//std::cout << "Some key was pressed!" << std::endl;
 			checkInput( theKeyState );
 
@@ -222,30 +285,9 @@ int main()
 				std::cout << theCurrentLine[pos];
 			}
 
-			//system( "cls" );
-			//for( int line = 0; line != thePreviousLines.size(); line++ )
-			//{
-			//	std::cout << thePreviousLines[line] << std::endl;
-			//}
-
 		}
-		//Sleep( 100 );	
 
-		//theCurrentLine
-
-		//if( g_bNewInput )
-		//{
-		//	if( g_bIsHideModeOn )
-		//		std::cout << "Hide Mode On" << std::endl;
-		//	else
-		//		std::cout << "Hide Mode Off!" << std::endl;
-		//}
-		//g_bNewInput = false;
 	}
-
-	//std::string input;
-
-	//std::cin >> input;
 
 	return 0;
 }
