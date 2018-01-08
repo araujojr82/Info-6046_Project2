@@ -6,21 +6,44 @@
 #include <fmod.hpp>
 #include <fmod_errors.h>
 
-//TODO: Create voice object.
+// FMOD variables & constants
+FMOD_RESULT mresult;
+FMOD::System *msystem = NULL;
+
+const int NUMBER_OF_SOUNDS = 3;
+const int NUMBER_OF_TAGS = 4;
+const int STREAM_BUFFER_SIZE = 65536;
+
+FMOD::Sound *msounds[NUMBER_OF_SOUNDS];
+FMOD::Channel *mchannels[NUMBER_OF_SOUNDS];
+
+// Create openstate
+FMOD_OPENSTATE mopenstate = FMOD_OPENSTATE_READY;
+
+// Radio stations URLs
+char *murl_classic_rock = "http://78.129.202.200:8040";
+char *murl_classic_jazz = "http://37.187.57.33:8028";
+char *murl_classic_video_game = "http://74.207.229.209:8010/classic/";
+
+
+// Voice objects
 ISpVoice *pVoice = NULL;
 HRESULT hr = NULL;
 
-bool g_exit_game = false;
+const std::string g_voiceGender = "Male";
+//const std::string g_voiceGender = "Female";
+
+// Global check variables
+bool g_bExit_game = false;
 bool g_bStartProgram = false;
 bool g_bIsHideModeOn = false;
 bool g_bIsTimeToAnser = false;
 bool g_bIsShiftPressed = false;
 bool g_bIsCapsPressed = false;
 bool g_bIsVoiceActive = false;
+bool g_bIsPaused = false;
 
-const std::string g_voiceGender = "Male";
-//const std::string g_voiceGender = "Female";
-
+// All global text variables/vectors/strings
 unsigned char theKeyState[256];
 
 std::vector<char> numberMap =
@@ -38,6 +61,117 @@ std::vector<char> theAnswer;
 std::vector<std::string> thePreviousLines;
 
 std::vector<char> theCurrentLine;
+
+void checkErrorFMOD( FMOD_RESULT result )
+{   // Check for errors in the FMOD_RESULT
+
+	if( result != FMOD_OK )
+	{
+		fprintf( stderr, "FMOD error! (%d) %s\n", result, FMOD_ErrorString( result ) );
+		exit( -1 );
+	}
+
+	return;
+}
+
+void initFMOD() 
+{
+	// Create the main system object.
+	mresult = FMOD::System_Create( &msystem );
+	checkErrorFMOD( mresult );	
+
+	//Initializes the system object, and the msound device. This has to be called at the start of the user's program
+	mresult = msystem->init( 512, FMOD_INIT_NORMAL, 0 );    // Initialize FMOD.
+	checkErrorFMOD( mresult );
+
+	//Increase internal buffersize for streams opened to account for Internet lag, default is 16384 
+	mresult = msystem->setStreamBufferSize( STREAM_BUFFER_SIZE, FMOD_TIMEUNIT_RAWBYTES );
+	checkErrorFMOD( mresult );
+
+	return;
+}
+
+void initStreamingChannels()
+{	
+	// Create the 3 Sounds
+	mresult = msystem->createSound( murl_classic_video_game, FMOD_CREATESTREAM | FMOD_NONBLOCKING, 0, &msounds[0] );
+	checkErrorFMOD( mresult );
+	mresult = msystem->createSound( murl_classic_rock, FMOD_CREATESTREAM | FMOD_NONBLOCKING, 0, &msounds[1] );
+	checkErrorFMOD( mresult );
+	mresult = msystem->createSound( murl_classic_jazz, FMOD_CREATESTREAM | FMOD_NONBLOCKING, 0, &msounds[2] );
+	checkErrorFMOD( mresult );
+	
+	return;
+}
+
+void startChannels()
+{
+	bool bPaused = false;
+
+	//Important to update msystem
+	mresult = msystem->update();
+	checkErrorFMOD( mresult );
+
+	// If channel is not started, start the streaming channel
+	// Channel 1 (0) is started in play, the others in paused
+	for( int i = 0; i != NUMBER_OF_SOUNDS; i++ )
+	{
+		if( i == 0 ) bPaused = false;
+		else bPaused = true;
+
+		if( !mchannels[i] )
+		{
+			msystem->playSound( msounds[i], 0, bPaused, &mchannels[i] );
+		}
+	}
+
+	return;
+}
+
+void playPauseChannel( int channel_number )
+{
+	mresult = mchannels[channel_number]->getPaused( &g_bIsPaused );
+	checkErrorFMOD( mresult );
+
+	mresult = mchannels[channel_number]->setPaused( !g_bIsPaused );
+	checkErrorFMOD( mresult );
+	return;
+}
+
+void performSoundAction( int action )
+{
+	switch( action )
+	{
+	case 1:
+		playPauseChannel( 0 );
+		break;
+	case 2:
+		playPauseChannel( 1 );
+		break;
+	case 3:
+		playPauseChannel( 2 );
+		break;
+	case 4:
+		break;
+	case 5:
+		break;
+	case 6:
+		break;
+	case 7:
+		break;
+	case 8:
+		break;
+	case 9:
+		break;
+	case 0:
+		break;
+	default:
+		break;
+	}
+
+
+	return;
+}
 
 bool checkAnyKeyWasPressed( unsigned char keyState[256] )
 {
@@ -67,7 +201,7 @@ void checkInput( unsigned char keyState[256] )
 
 	if( keyState[VK_ESCAPE] )
 	{   // Escape Key
-		g_exit_game = true;
+		g_bExit_game = true;
 		return;
 	}
 
@@ -161,7 +295,10 @@ void checkInput( unsigned char keyState[256] )
 			// Check for number input
 			else if( key >= 48 && key <= 57 )
 			{
-				theTypedChar = numberMap[key - 48];
+				//theTypedChar = numberMap[key - 48];
+				char numberAsChar = numberMap[key - 48];
+				int theNumber = numberAsChar - '0';
+				performSoundAction( theNumber );
 			}
 
 			// Check for letter input
@@ -327,6 +464,8 @@ void initVoiceModule()
 int main()
 {
 	initVoiceModule();
+	initFMOD();
+	initStreamingChannels();
 
 	printIntro();
 
@@ -358,9 +497,10 @@ int main()
 
 	char theTypedChar;
 
-	while( !g_exit_game )
+	while( !g_bExit_game )
 	{
 		checkShiftState();
+		startChannels();
 
 		//std::string status;
 		//if( g_bIsShiftPressed ) status = "ON";
