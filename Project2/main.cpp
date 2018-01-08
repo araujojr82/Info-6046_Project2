@@ -1,13 +1,13 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include <sstream>						// "String stream"f
-//#include <istream>
+#include <sstream>	// "String stream"
 
 #include <vector>
 #include <windows.h>
 
 #include <sapi.h>	//Text to Speech Library
+#include <sphelper.h>
 
 #include <fmod.hpp>
 #include <fmod_errors.h>
@@ -35,6 +35,10 @@ char *murl_classic_video_game = "http://74.207.229.209:8010/classic/";
 // Voice objects
 ISpVoice *pVoice = NULL;
 HRESULT hr = NULL;
+HRESULT hr2 = NULL;
+CComPtr<ISpVoice> cpVoice;
+CComPtr<ISpStream> cpStream;
+CSpStreamFormat	cAudioFormat;
 
 const std::string MALE_VOICE = "Male";
 const std::string FEMALE_VOICE = "Female";
@@ -48,6 +52,7 @@ bool g_bIsShiftPressed = false;
 bool g_bIsCapsPressed = false;
 bool g_bIsVoiceActive = false;
 bool g_bIsPaused = false;
+bool g_bIsInstructionsSaved = false;
 
 // All global text variables/vectors/strings
 unsigned char theKeyState[256];
@@ -198,6 +203,13 @@ bool checkAnyKeyWasPressed( unsigned char keyState[256] )
 
 	// else, return false
 	return false;
+}
+
+void clearAllKeys( unsigned char keyState[256] )
+{
+	unsigned char emptyKeyState[256];
+
+	keyState = emptyKeyState;
 }
 
 void checkInput( unsigned char keyState[256] )
@@ -468,6 +480,20 @@ void initVoiceModule()
 	return;
 }
 
+void textToSpeechToFile( std::string textToBeRead, std::string gender )
+{
+	// Convert the Strint to WString so we can use the c_str() function
+	std::wstring textToWString( textToBeRead.begin(), textToBeRead.end() );
+
+	// Convert the WString to LPCWSTR
+	LPCWSTR theText = textToWString.c_str();
+
+	// Call the voice module with the text to be read and saved to file
+	hr2 = cpVoice->Speak( theText, SPF_DEFAULT, NULL );
+
+	return;
+}
+
 void loadFileToVector( std::string fileName, std::vector<std::string> &fileIntoLines )
 {
 	// TODO change this config formating
@@ -509,6 +535,60 @@ void loadFileToVector( std::string fileName, std::vector<std::string> &fileIntoL
 	}
 }
 
+void recordInstructions()
+{
+	std::vector<std::string> textToVoiceLines;
+
+	loadFileToVector( "instructions_text.txt", textToVoiceLines );
+
+	for( int i = 0; i != textToVoiceLines.size(); i++ )
+	{
+		textToSpeechToFile( textToVoiceLines[i], MALE_VOICE );
+	}
+
+	return;
+}
+
+void initInstructions()
+{
+	// Create voice
+	hr2 = cpVoice.CoCreateInstance( CLSID_SpVoice );
+
+	// Set audio format	
+	if( SUCCEEDED( hr2 ) ) {
+		hr2 = cAudioFormat.AssignFormat( SPSF_22kHz16BitStereo );
+	}
+
+	// Bind stream to file
+	if( SUCCEEDED( hr2 ) ) {
+		hr2 = SPBindToFile( L"c:\\araujo_euclides\\project3.wav", SPFM_CREATE_ALWAYS, &cpStream, &cAudioFormat.FormatId(), cAudioFormat.WaveFormatExPtr() );
+	}
+
+	// Set output to cpstream
+	if( SUCCEEDED( hr2 ) ) {
+		hr2 = cpVoice->SetOutput( cpStream, true );
+	}
+
+	// Record the text to file as speak
+	if( SUCCEEDED( hr2 ) ) {
+		recordInstructions();	
+		//hr2 = cpVoice->Speak( L"Hello media fundamentals this is second example, saving into a wav file!", SPF_DEFAULT, NULL );
+	}
+
+	//TODO: close the stream
+	if( SUCCEEDED( hr ) ) {
+		hr2 = cpStream->Close();
+
+		g_bIsInstructionsSaved = true;
+	}
+	else
+	{
+		g_bIsInstructionsSaved = false;
+	}
+	
+	return;
+}
+
 void playIntro()
 {
 	std::vector<std::string> textToVoiceLines;
@@ -522,17 +602,9 @@ void playIntro()
 	
 	return;
 }
+
 void playInstructions()
 {
-	std::vector<std::string> textToVoiceLines;
-
-	loadFileToVector( "instructions_text.txt", textToVoiceLines );
-
-	for( int i = 0; i != textToVoiceLines.size(); i++ )
-	{
-		textToSpeech( textToVoiceLines[i], MALE_VOICE );
-	}
-	
 	return;
 }
 
@@ -542,9 +614,10 @@ int main()
 	initVoiceModule();
 	initFMOD();
 	initStreamingChannels();
+	initInstructions();
 
 	printIntro();
-	playIntro();
+	//playIntro();
 	
 	std::cout << std::endl;
 	std::cout << "Press any key to start..." << std::endl;
@@ -553,13 +626,13 @@ int main()
 	{
 		g_bStartProgram = checkAnyKeyWasPressed( theKeyState );
 	}
+	clearAllKeys( theKeyState );
 
 	theCurrentLine.clear();	// clear the typing line
 	
 	// Store the default intro in the line list
-	thePreviousLines.push_back( "Hello and welcome to the great magical show, I'm Mr. Magician" );
+	thePreviousLines.push_back( "Hello and welcome to the great magical show, I'm Mr. Magician..." );
 	thePreviousLines.push_back( " " );
-	thePreviousLines.push_back( "What is that you wish to know?" );
 
 	system( "cls" );
 	for( int line = 0; line != thePreviousLines.size(); line++ )
@@ -574,13 +647,24 @@ int main()
 
 	g_bStartProgram = false;
 	
-	while( !g_bStartProgram )
+	if( g_bIsInstructionsSaved )
 	{
-		playInstructions();
-		g_bStartProgram = checkAnyKeyWasPressed( theKeyState );
+		std::cout << "Press any key to stop the instructions...";
+		while( !g_bStartProgram )
+		{
+			playInstructions();
+			g_bStartProgram = checkAnyKeyWasPressed( theKeyState );
+		}
+		
+		std::cout << "\r";		
+		std::cout << "                                         ";
+		std::cout << "\r";
+		std::cout << "What is that you wish to know?" << std::endl;
+		thePreviousLines.push_back( "What is that you wish to know?" );
+		clearAllKeys( theKeyState );
 	}
 
-	char theTypedChar;
+	//char theTypedChar;
 
 	while( !g_bExit_game )
 	{
