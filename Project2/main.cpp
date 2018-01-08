@@ -2,13 +2,19 @@
 #include <string>
 #include <vector>
 #include <windows.h>
+#include <sapi.h>
+
+//TODO: Create voice object.
+ISpVoice *pVoice = NULL;
+HRESULT hr = NULL;
 
 bool g_exit_game = false;
 bool g_bStartProgram = false;
 bool g_bIsHideModeOn = false;
-bool g_bNewInput = false;
+bool g_bIsTimeToAnser = false;
 bool g_bIsShiftPressed = false;
 bool g_bIsCapsPressed = false;
+bool g_bIsVoiceActive = false;
 
 unsigned char theKeyState[256];
 
@@ -105,13 +111,8 @@ void checkInput( unsigned char keyState[256] )
 			std::cout << thePreviousLines[line] << std::endl;
 		}
 
-		// print the current line over again
-		for( int pos = 0; pos != theAnswer.size(); pos++ )
-		{
-			//theLine += theAnswer[pos];
-			std::cout << theAnswer[pos];
-		}
-		//thePreviousLines.push_back( theLine );
+		g_bIsTimeToAnser = true;
+		
 		return;
 	}
 
@@ -125,11 +126,11 @@ void checkInput( unsigned char keyState[256] )
 	if( keyState[VK_LCONTROL] )
 	{   // Left Control (Activate or Deactivate the hiden Mode)
 		g_bIsHideModeOn = !g_bIsHideModeOn;
-		if( g_bIsHideModeOn )
-			std::cout << "Hidden Mode is ON" << std::endl;
-		else
-			std::cout << "Hidden Mode is OFF" << std::endl;
-		return;
+		//if( g_bIsHideModeOn )
+		//	std::cout << "Hidden Mode is ON" << std::endl;
+		//else
+		//	std::cout << "Hidden Mode is OFF" << std::endl;
+		//return;
 	}
 
 	char theTypedChar = NULL;
@@ -236,8 +237,76 @@ void checkShiftState()
 	return;
 }
 
+void showAnswer()
+{
+	std::string theAnswerText;
+	for( int pos = 0; pos != theAnswer.size(); pos++ )
+	{
+		theAnswerText += theAnswer[pos];
+		//std::cout << theAnswer[pos];
+	}
+	theAnswer.clear();
+	g_bIsTimeToAnser = false;
+
+	std::string textToSpeech;
+	textToSpeech = "<voice required='Gender = Male'>The answer to your question is, ";
+	textToSpeech += theAnswerText;
+	textToSpeech += "</voice>";
+
+	std::wstring textToWString ( textToSpeech.begin(), textToSpeech.end() );
+
+	LPCWSTR theText = textToWString.c_str();
+
+	if( g_bIsVoiceActive )
+	{
+		//hr = pVoice->Speak( L"<voice required='Gender = Male'>Hello media fundamentals</voice>", 0, NULL );
+		hr = pVoice->Speak( theText, 0, NULL );
+	}
+	else
+	{
+		std::cout << "The answer to your question is: " << theAnswerText;
+	}
+	
+}
+
+
+bool initVoiceModule()
+{
+	////TODO: Create voice object.
+	//ISpVoice *pVoice = NULL;
+
+
+	//TODO: Initialize the COM library on the current thread
+	if( FAILED( ::CoInitialize( NULL ) ) ) {
+		return false;
+	}
+
+	//TODO: Initialize voice.
+	hr = CoCreateInstance( CLSID_SpVoice, NULL, CLSCTX_ALL, IID_ISpVoice, ( void ** )&pVoice );
+
+	//TODO: Speak
+	if( SUCCEEDED( hr ) ) {
+		g_bIsVoiceActive = true;
+		//hr = pVoice->Speak( L"<voice required='Gender = Female'>Hello media fundamentals</voice>", 0, NULL );
+		//hr = pVoice->Speak( L"<voice required='Gender = Male'>Hello media fundamentals</voice>", 0, NULL );
+		//hr = pVoice->Speak( L"<rate speed='-5'>Fanshawe College</rate>", 0, NULL );
+		//hr = pVoice->Speak( L"<lang langid = '409'>This should be spoken in english< / lang>", 0, NULL );
+	}
+	else
+	{
+		g_bIsVoiceActive = false;
+	}
+	
+
+	return true;
+}
+
+
+
 int main()
 {
+	initVoiceModule();
+
 	printIntro();
 
 	while( !g_bStartProgram )
@@ -279,6 +348,8 @@ int main()
 			// return the cursor to the beggining of the line
 			std::cout << "\r";
 
+			if( g_bIsTimeToAnser ) showAnswer();
+
 			// print the current line over again
 			for( int pos = 0; pos != theCurrentLine.size(); pos++ )
 			{
@@ -288,6 +359,13 @@ int main()
 		}
 
 	}
+
+
+	//TODO: Release objects
+	pVoice->Release();
+	pVoice = NULL;
+
+	::CoUninitialize();
 
 	return 0;
 }
