@@ -1,0 +1,4 @@
+<voice required = 'Gender = Female'> Welcome to the show! This one is all about <spell>MAGIC</spell>. Magic! I present to you the great <emph>MAGICIAN</emph>!;
+<voice required = 'Gender = Male'> <rate absspeed = "-5"> Hello, <rate absspeed = "10"> I mean hello... <rate absspeed = "15"> sorry, I'm calibrating my voice!<rate absspeed="0">;
+<voice required = 'Gender = Female'> Mr.Magician <silence msec = "800" /> Is everything alright ? <pitch absmiddle = "5">The show is about to start. 
+<pitch absmiddle = "10"> Right now Mr.Magician! <pitch absmiddle = "0">";

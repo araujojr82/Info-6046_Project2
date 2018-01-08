@@ -1,8 +1,14 @@
 #include <iostream>
 #include <string>
+#include <fstream>
+#include <sstream>						// "String stream"f
+//#include <istream>
+
 #include <vector>
 #include <windows.h>
+
 #include <sapi.h>	//Text to Speech Library
+
 #include <fmod.hpp>
 #include <fmod_errors.h>
 
@@ -30,8 +36,8 @@ char *murl_classic_video_game = "http://74.207.229.209:8010/classic/";
 ISpVoice *pVoice = NULL;
 HRESULT hr = NULL;
 
-const std::string g_voiceGender = "Male";
-//const std::string g_voiceGender = "Female";
+const std::string MALE_VOICE = "Male";
+const std::string FEMALE_VOICE = "Female";
 
 // Global check variables
 bool g_bExit_game = false;
@@ -374,15 +380,19 @@ void checkShiftState()
 	return;
 }
 
-void textToSpeech( std::string textToBeRead )
+void textToSpeech( std::string textToBeRead, std::string gender )
 {
 	std::string textWithParameters;
 
+	textWithParameters = "";
+
 	// Assemble the Text to be read with the function parameters
-	// such as voice gender
-	textWithParameters = "<voice required='Gender = ";
-	textWithParameters += g_voiceGender;
-	textWithParameters += "'>";
+	if( gender != "" )
+	{
+		textWithParameters += "<voice required='Gender = ";
+		textWithParameters += gender;
+		textWithParameters += "'>";
+	}
 	textWithParameters += textToBeRead;
 	textWithParameters += "</voice>";
 
@@ -418,7 +428,7 @@ void showAnswer()
 		
 		if( g_bIsVoiceActive )
 		{
-			textToSpeech( theAnswerText );
+			textToSpeech( theAnswerText, MALE_VOICE );
 		}
 		else
 		{
@@ -432,7 +442,7 @@ void showAnswer()
 
 		if( g_bIsVoiceActive )
 		{
-			textToSpeech( theAnswerText );
+			textToSpeech( theAnswerText, MALE_VOICE );
 		}
 		else
 		{
@@ -442,8 +452,7 @@ void showAnswer()
 }
 
 void initVoiceModule()
-{
-	
+{	
 	//Initialize the COM library on the current thread
 	if( FAILED( ::CoInitialize( NULL ) ) ) {
 		g_bIsVoiceActive = false;
@@ -460,6 +469,61 @@ void initVoiceModule()
 	return;
 }
 
+void loadFileToVector( std::string fileName, std::vector<std::string> &fileIntoLines )
+{
+	// TODO change this config formating
+	std::ifstream textFile( fileName );
+	if( !textFile.is_open() )
+	{	// File didn't open...
+		std::cout << "Can't find text file" << std::endl;
+	}
+	else
+	{	// File DID open, so read it... 
+		std::string temp, theLine;
+
+		std::stringstream tempLine;		// Inside "sstream"
+
+		while( !textFile.eof() && textFile.is_open() )
+		{
+			tempLine.str( "" );
+
+			bool b_KeepReadingLine = true;
+			do
+			{
+				textFile >> temp;		// check if it's the end of the line (;)
+				if( temp.back() != ';' )
+				{
+					tempLine << temp << " ";
+				}
+				else
+				{	// the end of the line 
+					temp.pop_back();	// remove the ;
+					tempLine << temp;	// add the rest to the line
+					b_KeepReadingLine = false;
+				}
+			} while( b_KeepReadingLine );
+
+			theLine = tempLine.str();;
+			fileIntoLines.push_back( theLine );
+		}
+		textFile.close();  // Close the file
+	}
+}
+
+void playIntro()
+{
+	std::vector<std::string> textToVoiceLines;
+	
+	loadFileToVector( "intro_text.txt", textToVoiceLines );
+	
+	for( int i = 0; i != textToVoiceLines.size(); i++ )
+	{
+		textToSpeech( textToVoiceLines[i], "" );
+	}
+	
+	return;
+}
+
 
 int main()
 {
@@ -468,6 +532,7 @@ int main()
 	initStreamingChannels();
 
 	printIntro();
+	playIntro();
 
 	while( !g_bStartProgram )
 	{
@@ -489,10 +554,8 @@ int main()
 	}
 
 	if( g_bIsVoiceActive )
-	{
-		textToSpeech( "Welcome to Magician!" );
-		//textToSpeech( "I can answer all your questions by using only my great magical skills..." );
-		//textToSpeech( "What is that you wish to know?" );
+	{		
+		textToSpeech( "Hello and welcome to the great magical show, I'm Mr. Magician", MALE_VOICE );		
 	}
 
 	char theTypedChar;
