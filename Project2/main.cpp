@@ -14,185 +14,175 @@ and Jorge Amengol
 #include "utils.h"
 #include "sound.h"
 
-bool checkAnyKeyWasPressed( unsigned char keyState[256] )
+bool getConsoleChar( KEY_EVENT_RECORD& krec )
 {
-	// get the state of everykey
-	for( int i = 0; i < 256; i++ )
+	DWORD cc;
+	INPUT_RECORD irec;
+	HANDLE h = GetStdHandle( STD_INPUT_HANDLE );
+
+	if( h == NULL )
 	{
-		keyState[i] = GetAsyncKeyState( i );		
+		return false; // console not found
 	}
 
-	// if any key is pressed, return true
-	for( int j = 1; j < 256; j++ )
+	for( ; ; )
 	{
-		if( keyState[j] )
+		ReadConsoleInput( h, &irec, 1, &cc );
+		if( irec.EventType == KEY_EVENT && ( ( KEY_EVENT_RECORD& )irec.Event ).bKeyDown )
 		{
+			krec = ( KEY_EVENT_RECORD& )irec.Event;
 			return true;
 		}
 	}
-
-	// else, return false
 	return false;
 }
 
-void clearAllKeys( unsigned char keyState[256] )
-{
-	unsigned char emptyKeyState[256];
 
-	keyState = emptyKeyState;
+bool checkInput( KEY_EVENT_RECORD &key )
+{
+	getConsoleChar( key );
+
+	if( key.wVirtualKeyCode != NULL )
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+
+	return false;
 }
 
-void checkInput( unsigned char keyState[256] )
-{   //Check for Key Inputs
+bool handleInputForInstructions( KEY_EVENT_RECORD &key )
+{
+	char theChar = key.uChar.AsciiChar;
 
-	char newChar;
-
-	if( keyState[VK_ESCAPE] )
-	{   // Escape Key
-		g_bExit_game = true;
-		return;
-	}
-
-	if( keyState[VK_BACK] )
-	{   // Backspace Key
-
-		int howManyChars = theCurrentLine.size();
-
-		if( howManyChars > 0 )	// Cannot delete if the line is empty!
-		{
-			// Remove the last character on the current line
-			theCurrentLine.pop_back();
-
-			// return the cursor to the beggining of the line
-			std::cout << "\r";
-
-			// print a blank line until the last position, 
-			// this will clear the last typed char of the screen
-			for( int pos = 0; pos != howManyChars; pos++ )
-			{
-				std::cout << " ";
-			}
-		}
-		return;
-	}
-
-	if( keyState[VK_RETURN] )
-	{   // Enter Key
-		std::string theLine;
-
-		for( int pos = 0; pos != theCurrentLine.size(); pos++ )
-		{
-			theLine += theCurrentLine[pos];
-		}
-
-		thePreviousLines.push_back( theLine );
-		theCurrentLine.clear();
-
-		system( "cls" );
-		for( int line = 0; line != thePreviousLines.size(); line++ )
-		{
-			std::cout << thePreviousLines[line] << std::endl;
-		}
-
-		g_bIsTimeToAnser = true;
-		
-		return;
-	}
-
-	if( keyState[VK_SHIFT] ||
-		keyState[VK_LSHIFT] ||
-		keyState[VK_RSHIFT] )
+	// Check for number Input 
+	if( theChar >= 48 && theChar <= 57 )
 	{
-		return;
+		// Check if Alt was pressed, so there's no input in this case
+		if( key.dwControlKeyState == LEFT_ALT_PRESSED ||
+			key.dwControlKeyState == RIGHT_ALT_PRESSED )
+		{
+			int theNumber = theChar - '0';
+			performSoundAction( theNumber );
+			return false;
+		}
+		else
+			return true;
 	}
 
-	if( keyState[VK_LCONTROL] )
-	{   // Left Control (Activate or Deactivate the hiden Mode)
+	return true;
+}
+
+void handleInput( KEY_EVENT_RECORD &key )
+{
+	switch( key.wVirtualKeyCode )
+	{
+	case VK_SHIFT:
+		return;
+		break;
+	case VK_CAPITAL:
+		return;
+		break;
+	case VK_MENU:	//The ALT key
+		return;
+		break;
+	case VK_TAB:
+		return;
+		break;
+	case VK_ESCAPE:	// Exit the application
+		g_bExit_game = true;
+		break;
+	case VK_RETURN:	// Start the answer mode
+		{
+			std::string theLine;
+
+			for( int pos = 0; pos != theCurrentLine.size(); pos++ )		
+				theLine += theCurrentLine[pos];
+
+			thePreviousLines.push_back( theLine ); //Store this question
+			theCurrentLine.clear();
+
+			system( "cls" );
+			for( int line = 0; line != thePreviousLines.size(); line++ )
+				std::cout << thePreviousLines[line] << std::endl;
+
+			g_bIsTimeToAnser = true;
+		}				
+		return;
+		break;
+	case VK_CONTROL: // ON / OFF the hide mode
 		g_bIsHideModeOn = !g_bIsHideModeOn;
 		//if( g_bIsHideModeOn )
 		//	std::cout << "Hidden Mode is ON" << std::endl;
 		//else
 		//	std::cout << "Hidden Mode is OFF" << std::endl;
-		//return;
+		return;
+		break;
+	case VK_BACK:
+		{
+			int howManyChars = theCurrentLine.size();
+
+			if( howManyChars > 0 )	// Cannot delete if the line is empty!
+			{	// Remove the last character on the current line
+				theCurrentLine.pop_back();
+
+				// return the cursor to the beggining of the line
+				std::cout << "\r";
+
+				// print a blank line until the last position, 
+				// this will clear the last typed char of the screen
+				for( int pos = 0; pos != howManyChars; pos++ )
+					std::cout << " ";
+			}
+		}
+		return;
+		break;
+	default:	// Every other key
+
+		break;
 	}
 
-	char theTypedChar = NULL;
+	char theChar = key.uChar.AsciiChar;
 
-	for( int key = 0; key != 256; key++ )
+	// Check for number Input 
+	if( theChar >= 48 && theChar <= 57 )
 	{
-		if( keyState[key] )
+		// Check if Alt was pressed, so there's no input in this case
+		if( key.dwControlKeyState == LEFT_ALT_PRESSED ||
+			key.dwControlKeyState == RIGHT_ALT_PRESSED )
 		{
-			if( key == VK_SHIFT ||
-				key == VK_LSHIFT ||
-				key == VK_RSHIFT )
-			{
-				continue;
-			}
-
-			else if( key == VK_SPACE )
-			{   // Space Key
-				//theCurrentLine.push_back( ' ' );
-				theTypedChar = ' ';
-			}
-
-			else if( key == VK_CAPITAL )
-			{   // Caps Lock
-				g_bIsCapsPressed = !g_bIsCapsPressed;
-			}
-
-			// Check for number input
-			else if( key >= 48 && key <= 57 )
-			{
-				//theTypedChar = numberMap[key - 48];
-				char numberAsChar = numberMap[key - 48];
-				int theNumber = numberAsChar - '0';
-				performSoundAction( theNumber );
-			}
-
-			// Check for letter input
-			else if( key >= 65 && key <= 90 )
-			{
-
-				theTypedChar = keyMap[key - 65];
-				//If Caps is ON or Shift is pressed, convert to Uppercase
-				if( g_bIsCapsPressed || g_bIsShiftPressed )
-					theTypedChar = toupper( theTypedChar );
-			}
-
-			// Check for all others keys
-			else
-			{		
-				theTypedChar = MapVirtualKey( key, 2 );
-				if( theTypedChar != 0 )
-				{
-					if( g_bIsShiftPressed ){
-						if( theTypedChar == '/' ) theTypedChar = '?';
-					}
-				}
-			} // else
+			int theNumber = theChar - '0';
+			performSoundAction( theNumber );
+			return;
 		}
-	} // for( int key = 0; key != 257; key++ )
-	
-	// Check to see if we have a valid input char
-	if( theTypedChar != NULL )
-	{   // This is where the magic happens!!
-		if( g_bIsHideModeOn )
-		{	// If Hide Mode is On, store the answer and copy the sample phrase to the stream
+	}
+
+	// Still here? Let's treat the input
+	theChar = key.uChar.AsciiChar;
+	if( theChar != 0 )
+	{	// It's a valid input, store this		
+		if( g_bIsHideModeOn )	// This is where the magic happens!!
+		{	// If Hide Mode is On, store it in the answer variable...
+			// and copy the sample phrase to the stream
 			if( theCurrentLine.size() < standardLine.size() )
 				theCurrentLine.push_back( standardLine[theCurrentLine.size()] );
 			else
 				theCurrentLine.push_back( ' ' );
-
-			theAnswer.push_back( theTypedChar );
+		
+			theAnswer.push_back( theChar );
 		}
 		else
-		{
-			// If Hide Mode is Off, copy the input to the stream
-			theCurrentLine.push_back( theTypedChar );
+		{ // If Hide Mode is Off, copy the input to the stream
+			theCurrentLine.push_back( theChar );
 		}
+
 	}
 
-} // void checkInput...
+	return;
+}
 
 void printIntro()
 {
@@ -213,20 +203,6 @@ void printIntro()
 	return;
 }
 
-void checkShiftState()
-{
-	short sState2 = GetKeyState( VK_SHIFT );
-
-	g_bIsShiftPressed = false;	
-
-	if( sState2 < 0 )
-		g_bIsShiftPressed = true;
-
-	return;
-}
-
-
-
 void showAnswer()
 {
 	std::string theAnswerText;
@@ -246,32 +222,20 @@ void showAnswer()
 		textToBeRead += theAnswerText;
 		
 		if( isVoiceActive() )
-		{
 			textToSpeech( textToBeRead, MALE_VOICE );
-		}
 		else
-		{
 			std::cout << "The answer to your question is: " << theAnswerText;
-		}
 	}
 	else
 	{ // There's no answer, give some feedback to the user
-
 		theAnswerText = "I didn't understand, could you rephrase the question, please?";
 
 		if( isVoiceActive() )
-		{
 			textToSpeech( theAnswerText, MALE_VOICE );
-		}
 		else
-		{
-			std::cout << theAnswerText;
-		}
+			std::cout << theAnswerText;		
 	}	
 }
-
-
-
 
 void playInstructions()
 {
@@ -280,27 +244,27 @@ void playInstructions()
 	return;
 }
 
-
 int main()
 {
+	KEY_EVENT_RECORD theKey;
+
 	initVoiceModule();
 	initFMOD();
 	initStreamingChannels();
 	initInstructions();
 
 	printIntro();
-	playIntro();
+	//playIntro();
 	
 	std::cout << std::endl;
 	std::cout << "Press any key to start..." << std::endl;
 
 	while( !g_bStartProgram )
 	{
-		g_bStartProgram = checkAnyKeyWasPressed( theKeyState );
-	}
-	clearAllKeys( theKeyState );
+		g_bStartProgram = checkInput( theKey );
+	}	
 
-	theCurrentLine.clear();	// clear the typing line
+	//theCurrentLine.clear();	// clear the typing line
 	
 	// Store the default intro in the line list
 	thePreviousLines.push_back( "Hello and welcome to the great magical show, I'm Mr. Magician..." );
@@ -317,56 +281,48 @@ int main()
 		textToSpeech( "Hello and welcome to the great magical show, I'm Mr. Magician", MALE_VOICE );		
 	}
 
-	g_bStartProgram = false;
-	
+	// g_bIsInstructionsSaved = false;
 	if( g_bIsInstructionsSaved )
 	{
+		playInstructions();
+
+		bool bStopInstructions = false;
 		std::cout << "Press any key to stop the instructions...";
-		while( !g_bStartProgram )
-		{
-			playInstructions();
-			g_bStartProgram = checkAnyKeyWasPressed( theKeyState );
-		}
-		
+		while( !bStopInstructions )
+		{			
+			if( checkInput( theKey ) )
+			{
+				bStopInstructions = handleInputForInstructions( theKey );
+			}
+		}		
 		std::cout << "\r";		
 		std::cout << "                                         ";
 		std::cout << "\r";
 		std::cout << "What is that you wish to know?" << std::endl;
 		thePreviousLines.push_back( "What is that you wish to know?" );
-		clearAllKeys( theKeyState );
 	}
-
-	//char theTypedChar;
+	else
+	{
+		std::cout << "What is that you wish to know?" << std::endl;
+		thePreviousLines.push_back( "What is that you wish to know?" );
+	}
 
 	while( !g_bExit_game )
 	{
-		checkShiftState();
 		startChannels();
 
-		//std::string status;
-		//if( g_bIsShiftPressed ) status = "ON";
-		//else status = "OFF";
-
-		//std::cout << status << std::endl;
-
-		//Sleep( 100 );
-
-		if( checkAnyKeyWasPressed( theKeyState ) )
+		if( checkInput( theKey ) )
 		{					
-			//std::cout << "Some key was pressed!" << std::endl;
-			checkInput( theKeyState );
-
-			// return the cursor to the beggining of the line
-			std::cout << "\r";
+			handleInput( theKey );
+			
+			std::cout << "\r";				// return the cursor to the beggining of the line
 
 			// check to see if the user pressed Enter, and display the answer
-			if( g_bIsTimeToAnser ) showAnswer();
+			if( g_bIsTimeToAnser ) showAnswer(); 
 
 			// in every loop step we print the current line over again
 			for( int pos = 0; pos != theCurrentLine.size(); pos++ )
-			{
 				std::cout << theCurrentLine[pos];
-			}
 		}
 	}
 	
