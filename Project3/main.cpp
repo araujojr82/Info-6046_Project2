@@ -167,8 +167,6 @@ void handleInput( KEY_EVENT_RECORD &key )
 			performSoundAction( theNumber );
 			return;
 		}
-		else
-			return;
 	}
 	// This if for changing the Pitch amount
 	if( theChar == 91 || theChar == 93 )
