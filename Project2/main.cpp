@@ -58,6 +58,11 @@ bool handleInputForInstructions( KEY_EVENT_RECORD &key )
 {
 	char theChar = key.uChar.AsciiChar;
 
+	if( key.wVirtualKeyCode == VK_MENU )
+	{
+		return false;
+	}
+
 	// Check for number Input 
 	if( theChar >= 48 && theChar <= 57 )
 	{
@@ -294,7 +299,8 @@ int main()
 			{
 				bStopInstructions = handleInputForInstructions( theKey );
 			}
-		}		
+		}	
+		playPauseChannel( 3 );
 		std::cout << "\r";		
 		std::cout << "                                         ";
 		std::cout << "\r";

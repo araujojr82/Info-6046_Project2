@@ -124,62 +124,39 @@ void playPauseChannel( int channel_number )
 
 void playSoundOnLoop( int index )
 {
-	unsigned int l_curPos = 0;
-	unsigned int l_lenght = 0;
+	//Get master channel group
+	mresult = msystem->getMasterChannelGroup( &mastergroup );
+	checkErrorFMOD( mresult );
 
-	// Check to see if the channel is already playing
-	mresult = mchannels[index]->getPaused( &g_bIsPaused );
-	if( mresult == FMOD_OK )
-	{
-		mresult = mchannels[index]->getPosition( &l_curPos, FMOD_TIMEUNIT_MS );
-		checkErrorFMOD( mresult );
+	//Create DSP effects
+	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_HIGHPASS, &dsphighpass );
+	checkErrorFMOD( mresult );
+	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_ECHO, &dspecho );
+	checkErrorFMOD( mresult );
+	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_FLANGE, &dspflange );
+	checkErrorFMOD( mresult );
 
-		mresult = msounds[index]->getLength( &l_lenght, FMOD_TIMEUNIT_MS );
-		checkErrorFMOD( mresult );
+	//Add effects to master channel group.
+	mresult = mastergroup->addDSP( 0, dsphighpass );
+	checkErrorFMOD( mresult );
+	mresult = mastergroup->addDSP( 0, dspecho );
+	checkErrorFMOD( mresult );
+	mresult = mastergroup->addDSP( 0, dspflange );
+	checkErrorFMOD( mresult );
 
-		if( l_curPos == l_lenght )
-		{	// Channel is playing, but reaches the end, PLAY AGAIN
-			mresult = msystem->playSound( msounds[index], 0, false, &mchannels[index] );
-			checkErrorFMOD( mresult );
-		}
-	}
-	else
-	{   // Isn't playing, start playing
+	//Bypass all effects, this plays the sound with no effects.
+	mresult = dsphighpass->setBypass( true );;
+	checkErrorFMOD( mresult );
+	mresult = dspecho->setBypass( true );
+	checkErrorFMOD( mresult );
+	mresult = dspflange->setBypass( true );
+	checkErrorFMOD( mresult );
 
-		//Get master channel group
-		mresult = msystem->getMasterChannelGroup( &mastergroup );
-		checkErrorFMOD( mresult );
-
-		//Create DSP effects
-		mresult = msystem->createDSPByType( FMOD_DSP_TYPE_HIGHPASS, &dsphighpass );
-		checkErrorFMOD( mresult );
-		mresult = msystem->createDSPByType( FMOD_DSP_TYPE_ECHO, &dspecho );
-		checkErrorFMOD( mresult );
-		mresult = msystem->createDSPByType( FMOD_DSP_TYPE_FLANGE, &dspflange );
-		checkErrorFMOD( mresult );
-
-		//Add effects to master channel group.
-		mresult = mastergroup->addDSP( 0, dsphighpass );
-		checkErrorFMOD( mresult );
-		mresult = mastergroup->addDSP( 0, dspecho );
-		checkErrorFMOD( mresult );
-		mresult = mastergroup->addDSP( 0, dspflange );
-		checkErrorFMOD( mresult );
-
-		//Bypass all effects, this plays the sound with no effects.
-		mresult = dsphighpass->setBypass( true );;
-		checkErrorFMOD( mresult );
-		mresult = dspecho->setBypass( true );
-		checkErrorFMOD( mresult );
-		mresult = dspflange->setBypass( true );
-		checkErrorFMOD( mresult );
-
-		mresult = msystem->createSound( mpath_recorded_intro, FMOD_CREATESTREAM, 0, &msounds[index] );
-		checkErrorFMOD( mresult );
-
-		mresult = msystem->playSound( msounds[index], 0, false, &mchannels[index] );
-		checkErrorFMOD( mresult );
-	}
+	mresult = msystem->createSound( mpath_recorded_intro, FMOD_LOOP_NORMAL, 0, &msounds[index] );
+	checkErrorFMOD( mresult );
+		
+	mresult = msystem->playSound( msounds[index], 0, false, &mchannels[index] );
+	checkErrorFMOD( mresult );
 }
 
 void enableDSP( int dspNumber )
