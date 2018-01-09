@@ -220,11 +220,11 @@ void startRecording( int index )
 	checkErrorFMOD( mresult );
 
 	// Add effects to the channel group.
-	mresult = group1->addDSP( 0, dspDistortion );
+	mresult = group2->addDSP( 0, dspDistortion );
 	checkErrorFMOD( mresult );
-	mresult = group1->addDSP( 0, dspPitchshift );
+	mresult = group2->addDSP( 0, dspPitchshift );
 	checkErrorFMOD( mresult );
-	mresult = group1->addDSP( 0, dspTremolo );
+	mresult = group2->addDSP( 0, dspTremolo );
 	checkErrorFMOD( mresult );
 
 	// Bypass all effects, this plays the sound with no effects.
@@ -288,23 +288,32 @@ void enableDSP( int dspNumber )
 		checkErrorFMOD( mresult );
 		break;
 	case 5:			
-		mresult = dspDistortion->getBypass( &bypass );
-		checkErrorFMOD( mresult );
-		mresult = dspDistortion->setBypass( !bypass );
-		checkErrorFMOD( mresult );
+		if( g_bIsRecording )
+		{
+			mresult = dspDistortion->getBypass( &bypass );
+			checkErrorFMOD( mresult );
+			mresult = dspDistortion->setBypass( !bypass );
+			checkErrorFMOD( mresult );
+			
+		}
 		break;
 	case 6:
-		mresult = dspPitchshift->getBypass( &bypass );
-		checkErrorFMOD( mresult );
-
-		mresult = dspPitchshift->setBypass( !bypass );
-		checkErrorFMOD( mresult );
+		if( g_bIsRecording )
+		{
+			mresult = dspPitchshift->getBypass( &bypass );
+			checkErrorFMOD( mresult );
+			mresult = dspPitchshift->setBypass( !bypass );
+			checkErrorFMOD( mresult );
+		}
 		break;
 	case 7:
-		mresult = dspTremolo->getBypass( &bypass );
-		checkErrorFMOD( mresult );
-		mresult = dspTremolo->setBypass( !bypass );
-		checkErrorFMOD( mresult );
+		if( g_bIsRecording )
+		{
+			mresult = dspTremolo->getBypass( &bypass );
+			checkErrorFMOD( mresult );
+			mresult = dspTremolo->setBypass( !bypass );
+			checkErrorFMOD( mresult );
+		}
 		break;
 	default:
 		break;
