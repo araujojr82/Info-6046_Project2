@@ -19,7 +19,9 @@ This assignment will be done by a group of 2 students:
 * Jorge Amengol
 
 ### Instructions
+Make sure you have the Microsoft ATL (Active Template Library) installed in the VS, by going into the Visual Studio Installer, select the Individual components tab, and under SDKs, libraries, and frameworks make sure Visual C++ ATL Support is selected.
 Compile it using x86 plataform in Visual Studio.
+If you compile it on Release, make sure you copy those files to the Release folder: intro_text.txt,  instructions_text.txt and fmod.dll.
 2 files hold the Intro dialog and the Instructions dialog. They can be modified without a recompile of the program.
 They are:  intro_text.txt &  instructions_text.txt
 You can use the XML TTS Tutorial (SAPI 5.3) to modify some of the commands in the file, more information on https://msdn.microsoft.com/en-us/library/ms717077(v=vs.85).aspx
