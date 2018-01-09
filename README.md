@@ -24,18 +24,17 @@ Compile it using x86 plataform in Visual Studio.
 They are:  intro_text.txt &  instructions_text.txt
 You can use the XML TTS Tutorial (SAPI 5.3) to modify some of the commands in the file, more information on https://msdn.microsoft.com/en-us/library/ms717077(v=vs.85).aspx
 
-
 The commands are:
-Alt+1: pause or play net stream sound 1;
-Alt+2: pause or play net stream sound 2;
-Alt+3: pause or play net stream sound 3;
-Alt+4: 
-Alt+5: 
-Alt+6: 
-Alt+7: 
-Alt+8: Enable/disable the Highpass DSP on the Instructions audio;
-Alt+9: Enable/disable the Echo DSP on the Instructions audio; 
-Alt+0: Enable/disable the Flanger DSP on the Instructions audio;
+Alt+1: Play/Pause net stream sound 1
+Alt+2: Play/Pause net stream sound 2
+Alt+3: Play/Pause net stream sound 3
+Alt+4: Start/Stop recording from your microphone
+Alt+5: Enable/disable the Highpass on recording sound
+Alt+6: Enable/disable the Echo DSP on recording sound
+Alt+7: Enable/disable the Flanger DSP on recording sound
+Alt+8: Enable/disable the Highpass DSP on the Instructions (text-to-speech) audio;
+Alt+9: Enable/disable the Echo DSP on the Instructions (text-to-speech) audio; 
+Alt+0: Enable/disable the Flanger DSP on the Instructions (text-to-speech) audio;
 
 Left-Control: Toggle On/OFF the Hide-Mode
 Enter: Input the question and get the answer read by the text-to-speech;

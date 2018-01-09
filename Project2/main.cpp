@@ -14,23 +14,23 @@ and Jorge Amengol
 #include "utils.h"
 #include "sound.h"
 
-bool getConsoleChar( KEY_EVENT_RECORD& krec )
+bool getInputChar( KEY_EVENT_RECORD &key )
 {
-	DWORD cc;
-	INPUT_RECORD irec;
-	HANDLE h = GetStdHandle( STD_INPUT_HANDLE );
+	DWORD lenght;
+	INPUT_RECORD iRec;
+	HANDLE theHandle = GetStdHandle( STD_INPUT_HANDLE );
 
-	if( h == NULL )
+	if( theHandle == NULL )
 	{
 		return false; // console not found
 	}
 
 	for( ; ; )
 	{
-		ReadConsoleInput( h, &irec, 1, &cc );
-		if( irec.EventType == KEY_EVENT && ( ( KEY_EVENT_RECORD& )irec.Event ).bKeyDown )
+		ReadConsoleInput( theHandle, &iRec, 1, &lenght );
+		if( iRec.EventType == KEY_EVENT && ( ( KEY_EVENT_RECORD& )iRec.Event ).bKeyDown )
 		{
-			krec = ( KEY_EVENT_RECORD& )irec.Event;
+			key = ( KEY_EVENT_RECORD& )iRec.Event;
 			return true;
 		}
 	}
@@ -40,7 +40,7 @@ bool getConsoleChar( KEY_EVENT_RECORD& krec )
 
 bool checkInput( KEY_EVENT_RECORD &key )
 {
-	getConsoleChar( key );
+	getInputChar( key );
 
 	if( key.wVirtualKeyCode != NULL )
 	{
@@ -77,6 +77,18 @@ bool handleInputForInstructions( KEY_EVENT_RECORD &key )
 		else
 			return true;
 	}
+	// This if for changing the Pitch amount
+	if( theChar == 91 || theChar == 93 )
+	{
+		// Check if Alt was pressed, so there will be no input in this case
+		if( key.dwControlKeyState == LEFT_ALT_PRESSED ||
+			key.dwControlKeyState == RIGHT_ALT_PRESSED )
+		{
+			if( theChar == 91 ) changePitch( -0.1 );
+			if( theChar == 93 ) changePitch( 0.1 );
+			return false;
+		}
+	}
 
 	return true;
 }
@@ -85,21 +97,17 @@ void handleInput( KEY_EVENT_RECORD &key )
 {
 	switch( key.wVirtualKeyCode )
 	{
-	case VK_SHIFT:
-		return;
-		break;
-	case VK_CAPITAL:
-		return;
-		break;
-	case VK_MENU:	//The ALT key
-		return;
-		break;
-	case VK_TAB:
-		return;
-		break;
-	case VK_ESCAPE:	// Exit the application
+	case VK_SHIFT:	// Shift Keys
+		return;		// do nothing
+	case VK_CAPITAL:// Caps Lock
+		return;		// do nothing
+	case VK_MENU:	// The ALT keys
+		return;		// do nothing
+	case VK_TAB:	// The Tab key
+		return;		// do nothing
+	case VK_ESCAPE:	// ESC: Exit the application
 		g_bExit_game = true;
-		break;
+		return;
 	case VK_RETURN:	// Start the answer mode
 		{
 			std::string theLine;
@@ -117,7 +125,6 @@ void handleInput( KEY_EVENT_RECORD &key )
 			g_bIsTimeToAnser = true;
 		}				
 		return;
-		break;
 	case VK_CONTROL: // ON / OFF the hide mode
 		g_bIsHideModeOn = !g_bIsHideModeOn;
 		//if( g_bIsHideModeOn )
@@ -125,7 +132,6 @@ void handleInput( KEY_EVENT_RECORD &key )
 		//else
 		//	std::cout << "Hidden Mode is OFF" << std::endl;
 		return;
-		break;
 	case VK_BACK:
 		{
 			int howManyChars = theCurrentLine.size();
@@ -144,9 +150,7 @@ void handleInput( KEY_EVENT_RECORD &key )
 			}
 		}
 		return;
-		break;
 	default:	// Every other key
-
 		break;
 	}
 
@@ -161,6 +165,20 @@ void handleInput( KEY_EVENT_RECORD &key )
 		{
 			int theNumber = theChar - '0';
 			performSoundAction( theNumber );
+			return;
+		}
+		else
+			return;
+	}
+	// This if for changing the Pitch amount
+	if( theChar == 91 || theChar == 93 )
+	{
+		// Check if Alt was pressed, so there will be no input in this case
+		if( key.dwControlKeyState == LEFT_ALT_PRESSED ||
+			key.dwControlKeyState == RIGHT_ALT_PRESSED )
+		{
+			if( theChar == 91 ) changePitch( -0.1 );
+			if( theChar == 93 ) changePitch( 0.1 );
 			return;
 		}
 	}
@@ -183,9 +201,7 @@ void handleInput( KEY_EVENT_RECORD &key )
 		{ // If Hide Mode is Off, copy the input to the stream
 			theCurrentLine.push_back( theChar );
 		}
-
 	}
-
 	return;
 }
 
@@ -269,8 +285,6 @@ int main()
 		g_bStartProgram = checkInput( theKey );
 	}	
 
-	//theCurrentLine.clear();	// clear the typing line
-	
 	// Store the default intro in the line list
 	thePreviousLines.push_back( "Hello and welcome to the great magical show, I'm Mr. Magician..." );
 	thePreviousLines.push_back( " " );
@@ -281,12 +295,11 @@ int main()
 		std::cout << thePreviousLines[line] << std::endl;
 	}
 
-	if( isVoiceActive() )
-	{		
-		textToSpeech( "Hello and welcome to the great magical show, I'm Mr. Magician", MALE_VOICE );		
-	}
+	//if( isVoiceActive() )
+	//{		
+	//	textToSpeech( "Hello and welcome to the great magical show, I'm Mr. Magician", MALE_VOICE );		
+	//}
 
-	// g_bIsInstructionsSaved = false;
 	if( g_bIsInstructionsSaved )
 	{
 		playInstructions();
@@ -332,7 +345,7 @@ int main()
 		}
 	}
 	
-	releaseSound();
+	releaseSounds();
 
 	return 0;
 }

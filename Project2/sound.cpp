@@ -7,19 +7,26 @@ extern bool g_bIsInstructionsSaved;
 FMOD_RESULT mresult;
 FMOD::System *msystem = NULL;
 
-const int NUMBER_OF_SOUNDS = 4;
+const int NUMBER_OF_SOUNDS = 5;
 const int STREAM_BUFFER_SIZE = 65536;
+const int DEVICE_INDEX = 0;
 
 FMOD::Sound *msounds[NUMBER_OF_SOUNDS];
 FMOD::Channel *mchannels[NUMBER_OF_SOUNDS];
 
 //Master channel group
-FMOD::ChannelGroup *mastergroup = 0;
+//FMOD::ChannelGroup *mastergroup = 0;
+FMOD::ChannelGroup *group1 = 0;
+FMOD::ChannelGroup *group2 = 0;
 
 //DSP variables
-FMOD::DSP          *dsphighpass = 0;
-FMOD::DSP          *dspecho = 0;
-FMOD::DSP          *dspflange = 0;
+FMOD::DSP          *dspHighpass = 0;
+FMOD::DSP          *dspEcho = 0;
+FMOD::DSP          *dspFlange = 0;
+
+FMOD::DSP          *dspDistortion = 0;
+FMOD::DSP          *dspPitchshift = 0;
+FMOD::DSP          *dspTremolo = 0;
 
 // Create openstate
 FMOD_OPENSTATE mopenstate = FMOD_OPENSTATE_READY;
@@ -41,6 +48,10 @@ CSpStreamFormat	cAudioFormat;
 
 bool g_bIsVoiceActive = false;
 bool g_bIsPaused = false;
+//bool g_bIsReverbEnable = false;
+bool g_bIsRecording = false;
+
+float pitchValue = 0.8f;
 
 bool isVoiceActive()
 {
@@ -124,32 +135,31 @@ void playPauseChannel( int channel_number )
 
 void playSoundOnLoop( int index )
 {
-	//Get master channel group
-	mresult = msystem->getMasterChannelGroup( &mastergroup );
+	mresult = msystem->createChannelGroup( "group1", &group1 );
 	checkErrorFMOD( mresult );
 
 	//Create DSP effects
-	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_HIGHPASS, &dsphighpass );
+	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_HIGHPASS, &dspHighpass );
 	checkErrorFMOD( mresult );
-	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_ECHO, &dspecho );
+	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_ECHO, &dspEcho );
 	checkErrorFMOD( mresult );
-	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_FLANGE, &dspflange );
+	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_FLANGE, &dspFlange );
 	checkErrorFMOD( mresult );
 
-	//Add effects to master channel group.
-	mresult = mastergroup->addDSP( 0, dsphighpass );
+	//Add effects to the channel group.
+	mresult = group1->addDSP( 0, dspHighpass );
 	checkErrorFMOD( mresult );
-	mresult = mastergroup->addDSP( 0, dspecho );
+	mresult = group1->addDSP( 0, dspEcho );
 	checkErrorFMOD( mresult );
-	mresult = mastergroup->addDSP( 0, dspflange );
+	mresult = group1->addDSP( 0, dspFlange );
 	checkErrorFMOD( mresult );
 
 	//Bypass all effects, this plays the sound with no effects.
-	mresult = dsphighpass->setBypass( true );;
+	mresult = dspHighpass->setBypass( true );;
 	checkErrorFMOD( mresult );
-	mresult = dspecho->setBypass( true );
+	mresult = dspEcho->setBypass( true );
 	checkErrorFMOD( mresult );
-	mresult = dspflange->setBypass( true );
+	mresult = dspFlange->setBypass( true );
 	checkErrorFMOD( mresult );
 
 	mresult = msystem->createSound( mpath_recorded_intro, FMOD_LOOP_NORMAL, 0, &msounds[index] );
@@ -157,7 +167,102 @@ void playSoundOnLoop( int index )
 		
 	mresult = msystem->playSound( msounds[index], 0, false, &mchannels[index] );
 	checkErrorFMOD( mresult );
+
+	// Set the Sound to Channel Group1
+	mresult = mchannels[index]->setChannelGroup( group1 );
+	checkErrorFMOD( mresult );
 }
+
+void startRecording( int index )
+{
+	int numOfDrivers = 0;
+	int numOfTries = 20;
+	int nativeRate = 0;
+	int nativeChannels = 0;
+
+	// Identify recording drivers in your pc
+	while( numOfTries > 0 && numOfDrivers <= 0 )
+	{
+		numOfTries--;	
+		Sleep( 100 );	// Give some time before next try
+		mresult = msystem->getRecordNumDrivers( 0, &numOfDrivers );
+		checkErrorFMOD( mresult );
+	}
+
+	if( numOfDrivers == 0 )	// If no recording drivers are found
+		return;				// Skip this function
+
+	// Get recording driver info
+	mresult = msystem->getRecordDriverInfo( DEVICE_INDEX, NULL, 0, NULL, &nativeRate, NULL, &nativeChannels, NULL );
+	checkErrorFMOD( mresult );
+
+	// Create user sound
+	FMOD_CREATESOUNDEXINFO exinfo = { 0 };
+	exinfo.cbsize = sizeof( FMOD_CREATESOUNDEXINFO );
+	exinfo.numchannels = nativeChannels;
+	exinfo.format = FMOD_SOUND_FORMAT_PCM16;
+	exinfo.defaultfrequency = nativeRate;
+	exinfo.length = nativeRate * sizeof( short ) * nativeChannels;
+
+	// Create the Channel Group
+	mresult = msystem->createChannelGroup( "group2", &group2 );
+	checkErrorFMOD( mresult );
+	
+	// Create DSP effects
+	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_DISTORTION, &dspDistortion );
+	checkErrorFMOD( mresult );
+	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_PITCHSHIFT, &dspPitchshift );
+	checkErrorFMOD( mresult );
+	mresult = msystem->createDSPByType( FMOD_DSP_TYPE_TREMOLO, &dspTremolo );
+	checkErrorFMOD( mresult );
+
+	mresult = dspPitchshift->setParameterFloat( 0, pitchValue );
+	checkErrorFMOD( mresult );
+
+	// Add effects to the channel group.
+	mresult = group1->addDSP( 0, dspDistortion );
+	checkErrorFMOD( mresult );
+	mresult = group1->addDSP( 0, dspPitchshift );
+	checkErrorFMOD( mresult );
+	mresult = group1->addDSP( 0, dspTremolo );
+	checkErrorFMOD( mresult );
+
+	// Bypass all effects, this plays the sound with no effects.
+	mresult = dspDistortion->setBypass( true );;
+	checkErrorFMOD( mresult );
+	mresult = dspPitchshift->setBypass( true );
+	checkErrorFMOD( mresult );
+	mresult = dspTremolo->setBypass( true );
+	checkErrorFMOD( mresult );
+
+	mresult = msystem->createSound( 0, FMOD_LOOP_NORMAL | FMOD_OPENUSER, &exinfo, &msounds[index] );
+	checkErrorFMOD( mresult );
+
+	// Start the recording
+	mresult = msystem->recordStart( DEVICE_INDEX, msounds[index], true );
+	checkErrorFMOD( mresult );
+
+	// Play the recording sound over
+	mresult = msystem->playSound( msounds[index], 0, false, &mchannels[index] );
+	checkErrorFMOD( mresult );
+
+	// Set the recording sound to Channel Group2
+	mresult = mchannels[index]->setChannelGroup( group2 );
+	checkErrorFMOD( mresult );
+
+	g_bIsRecording = true;
+
+	return;
+
+}
+
+void stopRecording()
+{
+	mresult = msystem->recordStop( DEVICE_INDEX );
+	g_bIsRecording = false;
+	return;
+}
+
 
 void enableDSP( int dspNumber )
 {
@@ -165,27 +270,55 @@ void enableDSP( int dspNumber )
 	switch( dspNumber )
 	{
 	case 1:
-		mresult = dsphighpass->getBypass( &bypass );
+		mresult = dspHighpass->getBypass( &bypass );
 		checkErrorFMOD( mresult );
-		mresult = dsphighpass->setBypass( !bypass );
+		mresult = dspHighpass->setBypass( !bypass );
 		checkErrorFMOD( mresult );
 		break;
 	case 2:
-		mresult = dspecho->getBypass( &bypass );
+		mresult = dspEcho->getBypass( &bypass );
 		checkErrorFMOD( mresult );
-		mresult = dspecho->setBypass( !bypass );
+		mresult = dspEcho->setBypass( !bypass );
 		checkErrorFMOD( mresult );
 		break;
 	case 3:
-		mresult = dspflange->getBypass( &bypass );
+		mresult = dspFlange->getBypass( &bypass );
 		checkErrorFMOD( mresult );
-		mresult = dspflange->setBypass( !bypass );
+		mresult = dspFlange->setBypass( !bypass );
+		checkErrorFMOD( mresult );
+		break;
+	case 5:			
+		mresult = dspDistortion->getBypass( &bypass );
+		checkErrorFMOD( mresult );
+		mresult = dspDistortion->setBypass( !bypass );
+		checkErrorFMOD( mresult );
+		break;
+	case 6:
+		mresult = dspPitchshift->getBypass( &bypass );
+		checkErrorFMOD( mresult );
+
+		mresult = dspPitchshift->setBypass( !bypass );
+		checkErrorFMOD( mresult );
+		break;
+	case 7:
+		mresult = dspTremolo->getBypass( &bypass );
+		checkErrorFMOD( mresult );
+		mresult = dspTremolo->setBypass( !bypass );
 		checkErrorFMOD( mresult );
 		break;
 	default:
 		break;
 	}
 
+	return;
+}
+
+void changePitch( float amount )
+{
+	pitchValue += amount;
+
+	mresult = dspPitchshift->setParameterFloat( 0, pitchValue );
+	checkErrorFMOD( mresult );
 	return;
 }
 
@@ -203,12 +336,18 @@ void performSoundAction( int action )
 		playPauseChannel( 2 );
 		break;
 	case 4:
+		if( !g_bIsRecording ) startRecording( 4 );
+		else stopRecording();
+		
 		break;
 	case 5:
+		enableDSP( 5 );
 		break;
 	case 6:
+		enableDSP( 6 );
 		break;
 	case 7:
+		enableDSP( 7 );
 		break;
 	case 8:
 		enableDSP( 1 );
@@ -326,7 +465,7 @@ void initInstructions()
 	return;
 }
 
-void releaseSound()
+void releaseSounds()
 {
 	// Release the voice objects
 	pVoice->Release();
