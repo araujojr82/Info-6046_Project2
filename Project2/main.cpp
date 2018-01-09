@@ -275,7 +275,7 @@ int main()
 	initInstructions();
 
 	printIntro();
-	//playIntro();
+	playIntro();
 	
 	std::cout << std::endl;
 	std::cout << "Press any key to start..." << std::endl;
@@ -295,10 +295,10 @@ int main()
 		std::cout << thePreviousLines[line] << std::endl;
 	}
 
-	//if( isVoiceActive() )
-	//{		
-	//	textToSpeech( "Hello and welcome to the great magical show, I'm Mr. Magician", MALE_VOICE );		
-	//}
+	if( isVoiceActive() )
+	{		
+		textToSpeech( "Hello, I'm Mr. Magician", MALE_VOICE );		
+	}
 
 	if( g_bIsInstructionsSaved )
 	{

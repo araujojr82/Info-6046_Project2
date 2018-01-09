@@ -452,7 +452,7 @@ void initInstructions()
 	}
 
 	//TODO: close the stream
-	if( SUCCEEDED( hr ) ) {
+	if( SUCCEEDED( hr2 ) ) {
 		hr2 = cpStream->Close();
 
 		g_bIsInstructionsSaved = true;
